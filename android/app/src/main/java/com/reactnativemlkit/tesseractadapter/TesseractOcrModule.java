@@ -18,6 +18,7 @@ import com.facebook.react.common.annotations.VisibleForTesting;
 import com.googlecode.tesseract.android.TessBaseAPI;
 
 import android.app.Application;
+import android.net.Uri;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -76,31 +77,41 @@ public class TesseractOcrModule extends ReactContextBaseJavaModule {
   public void recognize(String path, String lang, @Nullable ReadableMap tessOptions, Promise promise) {
     prepareTesseract();
 
-    Log.d(REACT_CLASS, "Start ocr images");
+    AssetManager assetManager = this.appContext.getAssets();
+    InputStream is;
+    Bitmap bitmap = null;
 
     try {
-      BitmapFactory.Options options = new BitmapFactory.Options();
-
-      // TODO:
-      // Check image size before use inSampleSize (maybe this could help) --> https://goo.gl/4MvBvB
-      // considering that when inSampleSize is used (usually to save memory) the ocr quality decreases
-
-      //options.inSampleSize = 4; //inSampleSize documentation --> http://goo.gl/KRrlvi
-      
-      //Bitmap bitmap = BitmapFactory.decodeFile(path, options);
-      AssetManager assetManager = this.appContext.getAssets();
-      InputStream is;
       is = assetManager.open(path);
-      Bitmap bitmap = BitmapFactory.decodeStream(is);
-      Log.d(REACT_CLASS, "Loaded bitmap");
+      bitmap = BitmapFactory.decodeStream(is);
+    } catch (IOException e) {
+      bitmap = BitmapFactory.decodeFile(path);
 
+      if (bitmap == null) {
+        try {
+          is = appContext.getContentResolver().openInputStream(Uri.parse(path));
+          bitmap = BitmapFactory.decodeStream(is);
+        } catch (IOException ex) {
+          Log.d(REACT_CLASS, "Unable to open bitmap");
+          promise.reject("Unable to open bitmap");
+          return;
+        }
+      }
+    }
+
+    if (bitmap == null) {
+      Log.d(REACT_CLASS, "Null bitmap");
+      promise.reject("Null bitmap");
+      return;
+    }
+
+    try {
       String result = extractText(bitmap, lang, tessOptions);
-
       promise.resolve(result);
-
     } catch (Exception e) {
       Log.e(REACT_CLASS, e.getMessage());
       promise.reject("An error occurred", e.getMessage());
+      return;
     }
   }
 
@@ -115,8 +126,10 @@ public class TesseractOcrModule extends ReactContextBaseJavaModule {
       }
     }
 
-    Log.d(REACT_CLASS, "Initializing TessBaseAPI");
-    tessBaseApi.init(DATA_PATH, lang);
+    Log.d(REACT_CLASS, "Initializing TessBaseAPI with data path: " + DATA_PATH);
+    if (!tessBaseApi.init(DATA_PATH, lang)) {
+      return "Unable to initialize TessBaseAPI";
+    }
     Log.d(REACT_CLASS, "Initialized TessBaseAPI");
 
     if (tessOptions != null) {

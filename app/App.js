@@ -1,8 +1,11 @@
 import React, { Component } from 'react';
 import { StyleSheet, Text, ScrollView, View, Button, ActivityIndicator } from 'react-native';
+import { RNCamera } from 'react-native-camera';
 
 import MLKit from './components/MLKit';
 import TesseractOcr from './components/TesseractOcr';
+
+const FILE_PATH = 'engineplates/1.jpg';
 
 export default class App extends Component {
   constructor(props) {
@@ -11,14 +14,12 @@ export default class App extends Component {
     this.state = {
       result: '',
       loading: false,
+      showCamera: false,
+      library: 'mlkit',
     };
   }
-  onMlKit = () => {
-    this.setState({
-      loading: true,
-    });
-
-    MLKit.detectInImage('engineplates/1.jpg').then((res) => {
+  onMlKit = (filePath) => {
+    MLKit.detectInImage(filePath).then((res) => {
       this.setState({
         result: res,
         loading: false,
@@ -30,18 +31,14 @@ export default class App extends Component {
       });
     });
   }
-  onTesseractOcr = () => {
+  onTesseractOcr = (filePath) => {
     let tessOptions = {
-      whitelist: null, //'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890.-/_',
+      whitelist: null, //'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890.,-/_',
       blacklist: null,
     };
 
-    this.setState({
-      loading: true,
-    });
-
     setTimeout(() => {
-      TesseractOcr.recognize('engineplates/1.jpg', TesseractOcr.LANG_ENGLISH, tessOptions).then((res) => {
+      TesseractOcr.recognize(filePath, TesseractOcr.LANG_ENGLISH, tessOptions).then((res) => {
         console.log('f no');
         this.setState({
           result: res,
@@ -56,10 +53,42 @@ export default class App extends Component {
       })
     });
   }
+  runOCR(filePath) {
+    this.setState({
+      showCamera: false,
+      result: '',
+      loading: true,
+    });
+
+    if (this.state.library === 'tesseract') {
+      this.onTesseractOcr(filePath);
+    } else {
+      this.onMlKit(filePath);
+    }
+  }
+  onFile = () => {
+    this.runOCR(FILE_PATH);
+  }
+  onCapture = () => {
+    this.camera.takePictureAsync({
+      quality: 1,
+      fixOrientation: true,
+    }).then((data) => {
+      console.log(data);
+      this.runOCR(data.uri);
+    }).catch((err) => {
+      console.log('Error: ' + err);
+      this.setState({
+        loading: false,
+      });
+    });
+    this.setState({
+      loading: true,
+    });
+  }
   render() {
-    console.log('wtf...' + (this.state.loading ? 'loading' : 'not loading'));
     var data = [];
-    if (typeof this.state.result === 'string') {
+    if (typeof this.state.result === 'string' && this.state.result) {
       data.push(<Text key="res_string">{this.state.result}</Text>); 
     } else if (Array.isArray(this.state.result)) {
       this.state.result.forEach((block, i) => {
@@ -72,6 +101,19 @@ export default class App extends Component {
 
     return (
       <ScrollView style={styles.scrollView}>
+        {
+          this.state.showCamera &&
+          <RNCamera
+            ref={(cam) => { this.camera = cam; }}
+            style={styles.preview}
+            type={RNCamera.Constants.Type.back}
+            flashMode={RNCamera.Constants.FlashMode.off}
+          >
+             <Text style={styles.capture} onPress={this.onCapture}>
+                [Run OCR]
+             </Text>
+          </RNCamera>
+        }
         <View style={styles.view}>
           {
             this.state.loading &&
@@ -79,18 +121,33 @@ export default class App extends Component {
           }
           {
             !this.state.loading &&
-            data
+            <ScrollView style={{height: (data.length > 0 ? 400 : 0), width: '100%'}}>
+              {data}
+            </ScrollView>
           }
           {
             !this.state.loading &&
-            <View style={styles.button}>
-              <Button title="Tesseract OCR" onPress={this.onTesseractOcr} />
-            </View>
-          }
-          {
-            !this.state.loading &&
-            <View style={styles.button}>
-              <Button title="Google MLKit" onPress={this.onMlKit} />
+            <View>
+              <View style={styles.button}>
+                <Button 
+                  title={this.state.showCamera ? 'Hide Camera' : 'Show Camera'}
+                  onPress={() => {
+                    this.setState({showCamera: !this.state.showCamera, result: ''});
+                  }}
+                />
+              </View>
+              <View style={styles.button}>
+                <Button title="Run OCR on File" onPress={this.onFile} />
+              </View>
+              <View style={styles.button}>
+                <Button
+                  title={this.state.library === 'tesseract' ? 'Switch to Google MLKit' : 'Switch to Tesseract OCR'}
+                  onPress={() => {
+                    this.setState({library: (this.state.library === 'tesseract' ? 'mlkit' : 'tesseract')})
+                  }}
+                />
+              </View>
+              <Text style={{textAlign: 'center'}}>{this.state.library === 'tesseract' ? 'Using Tesseract OCR' : 'Using Google MLKit'}</Text>
             </View>
           }
         </View>
@@ -107,13 +164,29 @@ const styles = StyleSheet.create({
   view: {
     paddingTop: 10,
     paddingLeft: 10,
+    paddingRight: 10,
     paddingBottom: 20,
   },
   line: {
     fontWeight: 'bold',
   },
   button: {
-    paddingBottom: 10,
-    paddingTop: 10,
+    paddingBottom: 5,
+    paddingTop: 5,
+  },
+  preview: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    width: '100%',
+    height: 300,
+  },
+  capture: {
+    flex: 0,
+    backgroundColor: '#fff',
+    borderRadius: 5,
+    color: '#000',
+    padding: 10,
+    margin: 40
   }
 });

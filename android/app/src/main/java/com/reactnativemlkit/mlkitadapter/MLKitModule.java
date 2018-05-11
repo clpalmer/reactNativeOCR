@@ -52,17 +52,25 @@ public class MLKitModule extends ReactContextBaseJavaModule {
     FirebaseVisionTextDetector detector = FirebaseVision.getInstance().getVisionTextDetector();
     
     AssetManager assetManager = this.appContext.getAssets();
-
     InputStream is;
     Bitmap bitmap = null;
+
     try {
       is = assetManager.open(filePath);
       bitmap = BitmapFactory.decodeStream(is);
     } catch (IOException e) {
-      e.printStackTrace();
-      Log.d(LOG_TAG, "IOException reading file");
-      promise.reject("IOException: " + e.toString() + " - " + Arrays.toString(this.appContext.fileList()));
-      return;
+      bitmap = BitmapFactory.decodeFile(filePath);
+
+      if (bitmap == null) {
+        try {
+          is = appContext.getContentResolver().openInputStream(Uri.parse(filePath));
+          bitmap = BitmapFactory.decodeStream(is);
+        } catch (IOException ex) {
+          Log.d(LOG_TAG, "Unable to open bitmap");
+          promise.reject("Unable to open bitmap");
+          return;
+        }
+      }
     }
 
     if (bitmap == null) {
@@ -92,21 +100,6 @@ public class MLKitModule extends ReactContextBaseJavaModule {
       Log.d(LOG_TAG, "Null task");
       promise.reject("detectInImage returned null");
     }
-  }
-
-  private Bitmap getBitmapFromAsset(String filePath) {
-      AssetManager assetManager = this.appContext.getAssets();
-
-      InputStream is;
-      Bitmap bitmap = null;
-      try {
-          is = assetManager.open(filePath);
-          bitmap = BitmapFactory.decodeStream(is);
-      } catch (IOException e) {
-          e.printStackTrace();
-      }
-
-      return bitmap;
   }
 
   private void sendResult(FirebaseVisionText firebaseVisionText, Promise promise) {
