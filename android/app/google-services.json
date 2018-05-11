@@ -1,0 +1,42 @@
+{
+  "project_info": {
+    "project_number": "67341975388",
+    "firebase_url": "https://engine-plate-ocr.firebaseio.com",
+    "project_id": "engine-plate-ocr",
+    "storage_bucket": "engine-plate-ocr.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:67341975388:android:fd5557c13677d034",
+        "android_client_info": {
+          "package_name": "com.reactnativemlkit"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "67341975388-5gmu1ofm0038o4agkb68qiunvf87cs07.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBVeoWVLZO7kHH1QbN3Hgs_wPDVzvlSDvc"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
